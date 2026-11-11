@@ -1,0 +1,5 @@
+{
+  "name": "someday-qa-eas",
+  "private": true,
+  "description": "Only so eas-cli treats this folder as the Someday project (@tejasnafde/someday) to list its builds."
+}

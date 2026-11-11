@@ -1,0 +1,7 @@
+# Signed out, an https invite link opens the app (app links).
+appId: app.someday.capture
+---
+- runFlow:
+    file: ../../flows/invite-signed-out.yaml
+    env:
+      LABEL: "link"

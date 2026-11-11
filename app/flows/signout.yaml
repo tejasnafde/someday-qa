@@ -1,0 +1,21 @@
+# Web sign-out in Settings must also drop the native session (the
+# "signed-out" bridge message), so the shell shows its sign-in screen again.
+appId: app.someday.capture
+---
+# A fresh start: the app relaunches signed in, on the dashboard, whatever
+# app the last flow left in front.
+- launchApp:
+    stopApp: true
+- runFlow: to-dashboard.yaml
+- tapOn: "Settings"
+- runFlow: dismiss-tour.yaml
+- scrollUntilVisible:
+    element: "Sign out"
+    direction: DOWN
+    timeout: 20000
+- takeScreenshot: ${SHOT}-settings-bottom
+- tapOn: "Sign out"
+- extendedWaitUntil:
+    visible: "Sign in to start saving"
+    timeout: 30000
+- takeScreenshot: ${SHOT}-signed-out

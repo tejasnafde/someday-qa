@@ -1,0 +1,9 @@
+# Notification prompt: Don't allow.
+appId: app.someday.capture
+---
+- runFlow:
+    file: ../../flows/push.yaml
+    env:
+      OS_BUTTON: "Don.t allow"
+      EXPECT: "Pings are off.*"
+      SHOT: "40-push-deny"

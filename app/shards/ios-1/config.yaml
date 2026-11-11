@@ -1,0 +1,15 @@
+# iOS shard 1: sign-in, push deny, photo picker, background, sign-out, then an invite link while signed out.
+# One Maestro session runs these in order (run-shard.sh); a failed flow
+# does not stop the next one.
+flows:
+  - "*"
+executionOrder:
+  continueOnFailure: true
+  flowsOrder:
+    - 01-first-launch
+    - 02-signin
+    - 03-push-deny
+    - 04-photo
+    - 05-background
+    - 06-signout
+    - 07-invite-link-opens-app

@@ -1,0 +1,5 @@
+# Background, then foreground.
+appId: app.someday.capture
+---
+- runFlow:
+    file: ../../flows/background.yaml

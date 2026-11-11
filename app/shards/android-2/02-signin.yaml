@@ -1,0 +1,8 @@
+# Email sign-in to the dashboard.
+appId: app.someday.capture
+---
+- runFlow:
+    file: ../../flows/signin.yaml
+    env:
+      EXPECT: ".*(New Circle|Who do you make plans with).*"
+      SHOT: "21"

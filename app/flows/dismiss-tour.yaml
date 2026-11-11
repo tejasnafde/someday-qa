@@ -1,0 +1,12 @@
+# Taps a coachmark card away ("Skip tour" marks the page's steps seen) when
+# one is on screen. signin.yaml marks the whole tour seen, so this is only a
+# fallback for a card that was on screen before that.
+appId: app.someday.capture
+---
+- runFlow:
+    when:
+      visible: "Skip tour"
+    commands:
+      - tapOn: "Skip tour"
+      - waitForAnimationToEnd:
+          timeout: 3000

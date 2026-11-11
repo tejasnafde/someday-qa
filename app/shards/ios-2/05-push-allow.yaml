@@ -1,0 +1,9 @@
+# Push prompt: Allow.
+appId: app.someday.capture
+---
+- runFlow:
+    file: ../../flows/push.yaml
+    env:
+      OS_BUTTON: "Allow"
+      EXPECT: "Pings are on.*"
+      SHOT: "58-push-allow"

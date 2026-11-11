@@ -1,0 +1,17 @@
+# Android shard 1: invite link through app links, sign-in that lands in the circle, hardware Back after join, delete and leave, sharing text and a URL.
+# One Maestro session runs these in order (run-shard.sh); a failed flow
+# does not stop the next one.
+flows:
+  - "*"
+executionOrder:
+  continueOnFailure: true
+  flowsOrder:
+    - 01-first-launch
+    - 02-invite-link-opens-app
+    - 03-signin-lands-in-circle
+    - 04-back-after-join
+    - 05-share-text
+    - 06-share-url
+    - 07-delete-idea-back
+    - 08-leave-circle-back
+    - 09-signout

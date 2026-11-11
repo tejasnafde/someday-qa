@@ -1,0 +1,7 @@
+# Web sign-out drops the native session too.
+appId: app.someday.capture
+---
+- runFlow:
+    file: ../../flows/signout.yaml
+    env:
+      SHOT: "59"

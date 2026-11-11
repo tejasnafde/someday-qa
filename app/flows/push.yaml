@@ -1,0 +1,35 @@
+# Push permission through Settings > Notifications > Turn on > "Yes, ping me",
+# then the iOS dialog. OS_BUTTON is "Allow" or "Don.t Allow" (regex: the
+# apostrophe is curly). EXPECT is the toast the web shows after the answer.
+appId: app.someday.capture
+---
+# A fresh start: the app relaunches signed in, on the dashboard, whatever
+# app the last flow left in front.
+# Maestro's launchApp grants every permission unless told otherwise, and
+# then no OS prompt shows: notifications go back to "not asked".
+- launchApp:
+    stopApp: true
+    permissions:
+      notifications: unset
+- runFlow: to-dashboard.yaml
+- tapOn: "Settings"
+- extendedWaitUntil:
+    visible: "Turn on"
+    timeout: 30000
+- runFlow: dismiss-tour.yaml
+- takeScreenshot: ${SHOT}-settings
+- tapOn: "Turn on"
+- extendedWaitUntil:
+    visible: "Yes, ping me"
+    timeout: 15000
+- tapOn: "Yes, ping me"
+- extendedWaitUntil:
+    visible: ${OS_BUTTON}
+    timeout: 20000
+- takeScreenshot: ${SHOT}-os-dialog
+- tapOn: ${OS_BUTTON}
+- extendedWaitUntil:
+    visible: ${EXPECT}
+    timeout: 20000
+- takeScreenshot: ${SHOT}-answered
+- tapOn: "Back"

@@ -1,0 +1,7 @@
+# Hardware Back after the join.
+appId: app.someday.capture
+---
+- runFlow:
+    file: ../../flows/android-back-after-join.yaml
+    env:
+      CIRCLE: ".*QA ${RUN} ${SHARD} link.*"

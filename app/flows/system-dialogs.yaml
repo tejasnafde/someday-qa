@@ -1,0 +1,15 @@
+# Android emulators under CI load can show "System UI isn't responding" or
+# "<app> isn't responding" over the app. Wait it out, so the check sees the
+# app. Each tap runs only when the dialog is on screen.
+appId: app.someday.capture
+---
+- runFlow:
+    when:
+      visible: ".*isn.t responding.*"
+    commands:
+      - tapOn: "Wait"
+- runFlow:
+    when:
+      visible: ".*isn.t responding.*"
+    commands:
+      - tapOn: "Wait"

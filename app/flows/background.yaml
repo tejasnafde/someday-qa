@@ -1,0 +1,19 @@
+# Background, then foreground: the app must come back signed in, on the web
+# app, without the native sign-in screen.
+appId: app.someday.capture
+---
+- launchApp:
+    stopApp: true
+- runFlow: to-dashboard.yaml
+- pressKey: home
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: 40-backgrounded
+- launchApp:
+    stopApp: false
+- runFlow: system-dialogs.yaml
+- extendedWaitUntil:
+    visible: "New Circle"
+    timeout: 30000
+- assertNotVisible: "Sign in to start saving"
+- takeScreenshot: 41-foreground

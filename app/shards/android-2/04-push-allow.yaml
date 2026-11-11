@@ -1,0 +1,13 @@
+# Notification permission back to not asked, then Allow.
+appId: app.someday.capture
+---
+- runScript:
+    file: ../../flows/helper.js
+    env:
+      CMD: push-reset
+- runFlow:
+    file: ../../flows/push.yaml
+    env:
+      OS_BUTTON: "Allow"
+      EXPECT: "Pings are on.*"
+      SHOT: "41-push-allow"

@@ -1,0 +1,399 @@
+name: QA
+
+# A hard QA pass on the LIVE Someday apps: the production web app
+# (https://someday.tn07.dev), the iOS app on simulators and the Android app on
+# emulators. Nothing here runs on a laptop. A full run (job=all) runs every job
+# and shard side by side.
+#
+# web:     Playwright WebKit at iPhone sizes with the iOS shell user agent
+#          (web/web-qa.mjs), its groups in parallel browser contexts.
+# android: two emulator shards (app/shards/android-*).
+# ios:     two simulator shards (app/shards/ios-*). Invite links are XFAIL
+#          for an app older than 1.23.1 (app/run-shard.sh).
+#
+# Apps: never built here. Each app job installs the newest finished EAS build
+# of @tejasnafde/someday (eas/latest-build.sh): the newest iOS simulator build,
+# and the newest APK (profile qa-android first). They are cached by EAS build
+# id. Without such a build the job fails and says which build to make.
+#
+# When: by hand (workflow_dispatch, input job), and the web job on a
+# repository_dispatch of type someday-deployed (after a production deploy).
+# There is deliberately no pull_request trigger: this repository is public,
+# and a fork's pull request must never reach the secrets.
+#
+# Accounts (secrets; the scripts refuse an email without "qa"): web uses
+# QA_EMAIL_A and QA_EMAIL_B. Each app shard signs in ONE account of its own
+# (QA_EMAIL_D, E, F, G), and QA_EMAIL_C is the shared inviter, used through
+# the API only. Codes are read with the Supabase Admin API, never from a
+# mailbox.
+#
+# Data: every QA circle is named "QA ...". web/cleanup.mjs runs in an always()
+# step after each job and deletes that job's "QA " circles through the app's
+# own API, and clears push tokens.
+
+on:
+  workflow_dispatch:
+    inputs:
+      job:
+        description: Which job to run
+        type: choice
+        options: [all, web, android, ios]
+        default: all
+  repository_dispatch:
+    types: [someday-deployed]
+
+permissions:
+  contents: read
+
+env:
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+  QA_RUN_ID: ${{ github.run_id }}
+  NODE_VERSION: '24.22.1'
+  EAS_CLI_VERSION: 27.6.0
+  MAESTRO_VERSION: 2.12.1
+  MAESTRO_CLI_NO_ANALYTICS: 1
+  MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED: 'true'
+
+jobs:
+  web:
+    name: Web (WebKit, iPhone sizes, production)
+    if: github.event_name == 'repository_dispatch' || inputs.job == 'all' || inputs.job == 'web'
+    runs-on: ubuntu-24.04  # Playwright has no WebKit for ubuntu-26.04 yet (2026-11-02)
+    timeout-minutes: 30
+    # Only this job uses QA_EMAIL_A and QA_EMAIL_B.
+    concurrency:
+      group: qa-web-accounts
+      cancel-in-progress: false
+    env:
+      QA_EMAIL_A: ${{ secrets.QA_EMAIL_A }}
+      QA_EMAIL_B: ${{ secrets.QA_EMAIL_B }}
+      QA_RESULTS_DIR: results/web
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+
+      - name: Playwright version
+        id: pw
+        run: echo "version=$(node -p 'require("playwright/package.json").version')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache WebKit
+        id: pw-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-webkit-${{ runner.os }}-${{ steps.pw.outputs.version }}
+
+      - name: Install WebKit
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps webkit
+
+      - name: Install WebKit system libraries
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps webkit
+
+      - name: Run the web QA suite
+        run: node web/web-qa.mjs
+
+      - name: Clean up QA data
+        if: always()
+        run: node web/cleanup.mjs
+
+      - name: Upload screenshots and traces
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: qa-web-${{ github.run_id }}
+          path: results/web/
+          retention-days: 1
+          if-no-files-found: warn
+
+  android:
+    name: Android ${{ matrix.shard }}
+    if: github.event_name == 'workflow_dispatch' && (inputs.job == 'all' || inputs.job == 'android')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    # A shard's account must never be signed in by two runs at once.
+    concurrency:
+      group: qa-${{ matrix.shard }}
+      cancel-in-progress: false
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: android-1
+            account: D
+          - shard: android-2
+            account: E
+    env:
+      QA_PLATFORM: android
+      QA_SHARD: ${{ matrix.shard }}
+      QA_EMAIL_A: ${{ secrets.QA_EMAIL_C }}
+      QA_EMAIL_B: ${{ secrets[format('QA_EMAIL_{0}', matrix.account)] }}
+      QA_A_PREFIX: QA ${{ github.run_id }} ${{ matrix.shard }}
+      QA_OUT: ${{ github.workspace }}/results/app
+      APK: ${{ github.workspace }}/android-app/someday-qa.apk
+      AVD_KEY: avd-35-google_apis-x86_64-pixel_6-4g-v3
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Find the newest EAS APK
+        id: build
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: bash eas/latest-build.sh android
+
+      - name: Restore the APK
+        id: apk
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: android-app
+          key: eas-apk-${{ steps.build.outputs.id }}
+
+      - name: Download the APK
+        if: steps.apk.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p android-app
+          curl -fsSL "$(cat "$RUNNER_TEMP/eas-build-url")" -o "$APK"
+          ls -l "$APK"
+
+      - name: Save the APK
+        if: steps.apk.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: android-app
+          key: eas-apk-${{ steps.build.outputs.id }}
+
+      # Caches are saved right after they are made, not in a post step, so a
+      # failed shard still leaves them for the next run.
+      - name: Restore Maestro
+        id: maestro-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.maestro
+          key: maestro-${{ runner.os }}-${{ env.MAESTRO_VERSION }}
+
+      - name: Install Maestro
+        if: steps.maestro-cache.outputs.cache-hit != 'true'
+        run: curl -fsSL "https://get.maestro.mobile.dev" | bash
+
+      - name: Save Maestro
+        if: steps.maestro-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.maestro
+          key: maestro-${{ runner.os }}-${{ env.MAESTRO_VERSION }}
+
+      - name: Put Maestro on the PATH
+        run: echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # The system image and a booted emulator snapshot, so a run boots in
+      # seconds instead of downloading and cold-booting.
+      - name: Restore the emulator
+        id: avd-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            /usr/local/lib/android/sdk/system-images/android-35/google_apis/x86_64
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: ${{ env.AVD_KEY }}
+
+      - name: Make the emulator snapshot
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          ram-size: 4096M
+          disk-size: 4000M
+          cores: 4
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "Emulator snapshot made."
+
+      - name: Save the emulator
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            /usr/local/lib/android/sdk/system-images/android-35/google_apis/x86_64
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: ${{ env.AVD_KEY }}
+
+      - name: Run the shard
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          ram-size: 4096M
+          disk-size: 4000M
+          cores: 4
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: bash app/run-shard.sh
+
+      - name: Clean up QA data
+        if: always()
+        run: node web/cleanup.mjs
+
+      - name: Upload screenshots and Maestro logs
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: qa-${{ matrix.shard }}-${{ github.run_id }}
+          path: results/app/
+          retention-days: 1
+          if-no-files-found: warn
+
+  ios:
+    name: iOS ${{ matrix.shard }}
+    if: github.event_name == 'workflow_dispatch' && (inputs.job == 'all' || inputs.job == 'ios')
+    runs-on: macos-26
+    timeout-minutes: 30
+    # A shard's account must never be signed in by two runs at once.
+    concurrency:
+      group: qa-${{ matrix.shard }}
+      cancel-in-progress: false
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: ios-1
+            account: F
+          - shard: ios-2
+            account: G
+    env:
+      QA_PLATFORM: ios
+      QA_SHARD: ${{ matrix.shard }}
+      QA_EMAIL_A: ${{ secrets.QA_EMAIL_C }}
+      QA_EMAIL_B: ${{ secrets[format('QA_EMAIL_{0}', matrix.account)] }}
+      QA_A_PREFIX: QA ${{ github.run_id }} ${{ matrix.shard }}
+      QA_OUT: ${{ github.workspace }}/results/app
+      APP_DIR: ${{ github.workspace }}/sim-app
+    steps:
+      # The first boot of a fresh simulator is the slowest part of this job:
+      # start it now, and let the steps below run meanwhile.
+      - name: Start the simulator
+        run: |
+          udid="$(xcrun simctl list devices available -j | jq -r '[.devices | to_entries[] | select(.key | test("iOS")) | .value[] | select(.name | test("^iPhone 1[6-9]( Pro)?$"))] | last | .udid // empty')"
+          [ -n "$udid" ] || udid="$(xcrun simctl list devices available -j | jq -r '[.devices | to_entries[] | select(.key | test("iOS")) | .value[] | select(.name | test("^iPhone"))] | last | .udid')"
+          echo "DEVICE=$udid" >> "$GITHUB_ENV"
+          nohup xcrun simctl boot "$udid" > "$RUNNER_TEMP/boot.log" 2>&1 &
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Find the newest EAS simulator build
+        id: build
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: bash eas/latest-build.sh ios
+
+      - name: Restore the simulator app
+        id: app
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: sim-app
+          key: eas-ios-sim-${{ steps.build.outputs.id }}
+
+      - name: Download the simulator app
+        if: steps.app.outputs.cache-hit != 'true'
+        run: |
+          curl -fsSL "$(cat "$RUNNER_TEMP/eas-build-url")" -o "$RUNNER_TEMP/sim.tar.gz"
+          mkdir -p "$APP_DIR"
+          tar -xzf "$RUNNER_TEMP/sim.tar.gz" -C "$APP_DIR"
+          find "$APP_DIR" -maxdepth 3 -name '*.app' -type d | grep -q . || { echo "::error::The EAS build has no .app inside"; exit 1; }
+
+      - name: Save the simulator app
+        if: steps.app.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: sim-app
+          key: eas-ios-sim-${{ steps.build.outputs.id }}
+
+      - name: Restore Maestro
+        id: maestro-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.maestro
+          key: maestro-${{ runner.os }}-${{ env.MAESTRO_VERSION }}
+
+      - name: Install Maestro
+        if: steps.maestro-cache.outputs.cache-hit != 'true'
+        run: curl -fsSL "https://get.maestro.mobile.dev" | bash
+
+      - name: Save Maestro
+        if: steps.maestro-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.maestro
+          key: maestro-${{ runner.os }}-${{ env.MAESTRO_VERSION }}
+
+      - name: Put Maestro on the PATH
+        run: echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Block Expo push tokens for QA accounts
+        # The simulator resolves names through the host. Without exp.host,
+        # getExpoPushTokenAsync fails, so no token reaches the API.
+        run: |
+          echo "0.0.0.0 exp.host" | sudo tee -a /etc/hosts
+          sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder || true
+
+      - name: Run the shard
+        run: bash app/run-shard.sh
+
+      - name: Clean up QA data
+        if: always()
+        run: node web/cleanup.mjs
+
+      - name: Upload screenshots and Maestro logs
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: qa-${{ matrix.shard }}-${{ github.run_id }}
+          path: results/app/
+          retention-days: 1
+          if-no-files-found: warn

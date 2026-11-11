@@ -1,0 +1,21 @@
+# Signed out, an invite link opens: the app must come to the front with its
+# own sign-in screen. If the browser opens the invite page instead ("Join with
+# Google"), the link never reached the app. LABEL names the invite circle; the
+# helper makes it fresh, so the token never expires mid-run, and opens the
+# link the way a tap in Messages would (iOS simctl openurl, Android am start
+# VIEW).
+appId: app.someday.capture
+---
+- runScript:
+    file: helper.js
+    env:
+      CMD: invite-open
+      ARG: ${LABEL}
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: safari-tip.yaml
+- takeScreenshot: 10-invite-opened-signed-out
+- assertNotVisible: "Join with Google"
+- extendedWaitUntil:
+    visible: "Sign in to start saving"
+    timeout: 20000

@@ -1,0 +1,9 @@
+# Push prompt: Don't Allow (the apostrophe is curly, so a regex).
+appId: app.someday.capture
+---
+- runFlow:
+    file: ../../flows/push.yaml
+    env:
+      OS_BUTTON: "Don.t Allow"
+      EXPECT: "Pings are off.*"
+      SHOT: "22-push-deny"

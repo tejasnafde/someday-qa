@@ -1,0 +1,17 @@
+# The link again while a member opens the circle. Needs universal links
+# (UL, run-shard.sh): before 1.23.1 the account never joined, so it is skipped.
+appId: app.someday.capture
+# Close Safari afterwards, pass or fail, so the next flow never looks at it.
+onFlowComplete:
+  - runScript:
+      file: ../../flows/helper.js
+      env:
+        CMD: close-safari
+---
+- runFlow:
+    when:
+      true: ${UL == "true"}
+    file: ../../flows/invite-member.yaml
+    env:
+      LABEL: "link"
+      CIRCLE: ".*QA ${RUN} ${SHARD} link.*"

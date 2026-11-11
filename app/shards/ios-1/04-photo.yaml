@@ -1,0 +1,12 @@
+# Mark an idea done with a photo from the library.
+appId: app.someday.capture
+---
+- runScript:
+    file: ../../flows/helper.js
+    env:
+      CMD: circle
+      ARG: "photo"
+- runFlow:
+    file: ../../flows/photo.yaml
+    env:
+      CIRCLE: ".*QA ${RUN} ${SHARD} photo.*"

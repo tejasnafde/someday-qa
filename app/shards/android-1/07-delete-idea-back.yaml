@@ -1,0 +1,8 @@
+# Delete the shared idea, then hardware Back.
+appId: app.someday.capture
+---
+- runFlow:
+    file: ../../flows/android-delete-idea.yaml
+    env:
+      CIRCLE: ".*QA ${RUN} ${SHARD} link.*"
+      IDEA: ".*QA android shared idea.*"

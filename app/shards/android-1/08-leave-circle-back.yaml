@@ -1,0 +1,7 @@
+# Leave the circle, then hardware Back.
+appId: app.someday.capture
+---
+- runFlow:
+    file: ../../flows/android-leave-circle.yaml
+    env:
+      CIRCLE: ".*QA ${RUN} ${SHARD} link.*"

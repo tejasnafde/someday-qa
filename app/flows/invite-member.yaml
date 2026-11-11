@@ -1,0 +1,19 @@
+# The same invite link again (LABEL, the circle the account joined) while a
+# member: the circle opens in the app, with no dead-link error. Safari is
+# closed afterwards, pass or fail.
+appId: app.someday.capture
+---
+- runScript:
+    file: helper.js
+    env:
+      CMD: invite-open
+      ARG: ${LABEL}
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: safari-tip.yaml
+- extendedWaitUntil:
+    visible: ${CIRCLE}
+    timeout: 45000
+- assertNotVisible: "This invite link no longer works. Ask for a new one."
+- assertNotVisible: "Join with Google"
+- takeScreenshot: 60-invite-again-member

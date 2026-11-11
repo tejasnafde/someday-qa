@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "Someday",
+    "slug": "someday",
+    "owner": "tejasnafde",
+    "extra": {
+      "eas": {
+        "projectId": "5be6e9f4-89a9-4c66-98d1-6578ef5b1681"
+      }
+    }
+  }
+}

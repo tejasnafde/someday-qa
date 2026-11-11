@@ -1,0 +1,8 @@
+# Text shared into Someday.
+appId: app.someday.capture
+---
+- runFlow:
+    file: ../../flows/android-share.yaml
+    env:
+      TEXT: "QA android shared idea"
+      SHOT: "30-text"

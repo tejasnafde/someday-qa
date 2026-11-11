@@ -1,0 +1,13 @@
+# First launch on a clean install: the native sign-in screen, not the WebView.
+appId: app.someday.capture
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- runFlow: system-dialogs.yaml
+- extendedWaitUntil:
+    visible: "Sign in to start saving"
+    timeout: 45000
+- assertVisible: "Continue with Google"
+- assertVisible: "you@example.com"
+- takeScreenshot: 01-first-launch-sign-in

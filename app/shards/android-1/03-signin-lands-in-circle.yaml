@@ -1,0 +1,10 @@
+# Sign-in after the invite lands in the circle. LINK_EXPECT (run-shard.sh) is
+# that circle, or the dashboard when the app has no universal links (iOS
+# before 1.23.1: the link opened Safari, so the app never saw it).
+appId: app.someday.capture
+---
+- runFlow:
+    file: ../../flows/signin.yaml
+    env:
+      EXPECT: ${LINK_EXPECT}
+      SHOT: "21"

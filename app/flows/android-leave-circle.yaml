@@ -1,0 +1,32 @@
+# Android only. Leave a circle (CIRCLE, a regex) from the foot of its page,
+# then press hardware Back. Back must not reopen the circle that is gone.
+appId: app.someday.capture
+---
+- launchApp:
+    stopApp: true
+- runFlow: to-dashboard.yaml
+- tapOn: ${CIRCLE}
+- waitForAnimationToEnd:
+    timeout: 5000
+- runFlow: dismiss-tour.yaml
+- scrollUntilVisible:
+    element: "Leave circle"
+    direction: DOWN
+    timeout: 30000
+- tapOn: "Leave circle"
+- extendedWaitUntil:
+    visible: "Leave this circle.*"
+    timeout: 15000
+- tapOn:
+    text: "Leave"
+    below: "Leave this circle.*"
+- extendedWaitUntil:
+    visible: ".*(New Circle|Who do you make plans with).*"
+    timeout: 30000
+- takeScreenshot: 90-left-circle
+- pressKey: back
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: 91-back-after-leave
+- assertNotVisible: "Leave circle"
+- assertNotVisible: ${CIRCLE}

@@ -1,0 +1,59 @@
+# Native email sign-in: send the code, read it through the QA helper (Supabase
+# Admin API, no mailbox), type it, and the WebView home loads through the
+# /auth/webview-session bridge. EMAIL is the shard's account, EXPECT a regex
+# for the first web screen (the dashboard, or a circle after an invite), SHOT
+# names the screenshots.
+#
+# stopApp false on purpose: after an invite link the app holds the invite
+# path in memory, and sign-in must carry it to the circle. Launching only
+# brings the app to the front (over Safari, if Safari took the link).
+appId: app.someday.capture
+---
+- launchApp:
+    stopApp: false
+- runFlow: system-dialogs.yaml
+- extendedWaitUntil:
+    visible: "Sign in to start saving"
+    timeout: 45000
+- tapOn: "you@example.com"
+- inputText: ${EMAIL}
+# The iOS simulator can drop keys while its keyboard first comes up (one run
+# typed only "q"). Type again until the whole address is in the field.
+- repeat:
+    times: 3
+    while:
+      notVisible: ${EMAIL}
+    commands:
+      - eraseText: 60
+      - inputText: ${EMAIL}
+- tapOn: "Send code"
+- extendedWaitUntil:
+    visible: "Enter the code we emailed"
+    timeout: 30000
+- takeScreenshot: ${SHOT}-code-sent
+- runScript:
+    file: helper.js
+    env:
+      CMD: otp
+- tapOn: "12345678"
+- inputText: ${output.result}
+- tapOn: "Sign in"
+- extendedWaitUntil:
+    visible: ${EXPECT}
+    timeout: 60000
+- assertNotVisible: "Sign in to start saving"
+# Inside the iOS app the App Store card must never show. The Android app
+# shows it on purpose (lib/iosLaunch.cjs: invite friends on iPhone).
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - assertNotVisible: ".*on the App Store.*"
+- takeScreenshot: ${SHOT}-signed-in
+# The coachmark tour would cover what later flows tap, and the App Store card
+# repeats the circle name: mark both seen for this account. The flows that
+# follow relaunch the app, which loads that state.
+- runScript:
+    file: helper.js
+    env:
+      CMD: tour-off

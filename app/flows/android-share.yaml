@@ -1,0 +1,26 @@
+# Android only. The helper shares TEXT into Someday with ACTION_SEND while
+# signed in, as the share sheet does. The native share screen must open, save
+# to the one circle the account is in (selected on its own), and close. SHOT
+# names the screenshots. No launchApp: the check is what the share intent
+# opened.
+appId: app.someday.capture
+---
+- runScript:
+    file: helper.js
+    env:
+      CMD: share
+      ARG: ${TEXT}
+- extendedWaitUntil:
+    visible: "(?i)which circle.*"
+    timeout: 45000
+- extendedWaitUntil:
+    visible: ".*1 member.*|.*2 members.*"
+    timeout: 30000
+- takeScreenshot: ${SHOT}-share-screen
+- tapOn:
+    text: "(?i)save to circle"
+    below: "(?i)which circle.*"
+- extendedWaitUntil:
+    notVisible: "(?i)which circle.*"
+    timeout: 30000
+- takeScreenshot: ${SHOT}-share-saved

@@ -1,0 +1,17 @@
+# Android only. Runs right after the account signed in from an invite link and landed in
+# the circle (CIRCLE, a regex). Hardware Back must not reopen the join page:
+# no join landing, no dead-link error. No launchApp: the check is the Back
+# press from the state sign-in left.
+appId: app.someday.capture
+---
+- extendedWaitUntil:
+    visible: ${CIRCLE}
+    timeout: 30000
+- pressKey: back
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: 70-back-after-join
+- assertNotVisible: "Join with Google"
+- assertNotVisible: "This invite link no longer works.*"
+- assertNotVisible: "Invalid.*invite link.*"
+- assertNotVisible: "Sign in to start saving"

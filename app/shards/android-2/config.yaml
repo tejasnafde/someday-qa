@@ -1,0 +1,14 @@
+# Android shard 2: sign-in, the Android 13+ notification prompt (deny, then allow), background, sign-out.
+# One Maestro session runs these in order (run-shard.sh); a failed flow
+# does not stop the next one.
+flows:
+  - "*"
+executionOrder:
+  continueOnFailure: true
+  flowsOrder:
+    - 01-first-launch
+    - 02-signin
+    - 03-push-deny
+    - 04-push-allow
+    - 05-background
+    - 06-signout

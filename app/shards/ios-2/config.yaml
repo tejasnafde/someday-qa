@@ -1,0 +1,14 @@
+# iOS shard 2: an invite link while signed out, sign-in that lands in the circle, the link again as a member, push allow, sign-out.
+# One Maestro session runs these in order (run-shard.sh); a failed flow
+# does not stop the next one.
+flows:
+  - "*"
+executionOrder:
+  continueOnFailure: true
+  flowsOrder:
+    - 01-first-launch
+    - 02-invite-link-opens-app
+    - 03-signin-lands-in-circle
+    - 04-invite-again-member
+    - 05-push-allow
+    - 06-signout

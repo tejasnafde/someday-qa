@@ -1,0 +1,8 @@
+# A URL shared into Someday.
+appId: app.someday.capture
+---
+- runFlow:
+    file: ../../flows/android-share.yaml
+    env:
+      TEXT: "QA android shared link https://example.com/"
+      SHOT: "31-url"

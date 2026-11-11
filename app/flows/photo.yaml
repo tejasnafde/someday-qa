@@ -1,0 +1,50 @@
+# Mark an idea done and attach a photo from the library (simctl addmedia put
+# one there). CIRCLE is the QA circle name; the idea is "QA ios photo idea".
+appId: app.someday.capture
+---
+# A fresh start: the app relaunches signed in, on the dashboard, whatever
+# app the last flow left in front.
+- launchApp:
+    stopApp: true
+- runFlow: to-dashboard.yaml
+- tapOn: ${CIRCLE}
+- extendedWaitUntil:
+    visible: ".*QA ios photo idea.*"
+    timeout: 30000
+- runFlow: dismiss-tour.yaml
+- takeScreenshot: 30-circle
+- tapOn: ".*QA ios photo idea.*"
+- extendedWaitUntil:
+    visible: "(?i)done"
+    timeout: 30000
+- tapOn: "(?i)done"
+- extendedWaitUntil:
+    visible: "You did it."
+    timeout: 15000
+- tapOn: "Add photo"
+- runFlow:
+    when:
+      visible: "Photo Library"
+    commands:
+      - tapOn: "Photo Library"
+- extendedWaitUntil:
+    visible: "Photo, .*"
+    timeout: 20000
+- takeScreenshot: 31-photo-picker
+- tapOn:
+    text: "Photo, .*"
+    index: 0
+- runFlow:
+    when:
+      visible: "Add"
+    commands:
+      - tapOn: "Add"
+- extendedWaitUntil:
+    visible: "Remove photo"
+    timeout: 20000
+- takeScreenshot: 32-photo-attached
+- tapOn: "Save the memory"
+- extendedWaitUntil:
+    notVisible: "You did it."
+    timeout: 45000
+- takeScreenshot: 33-memory-saved

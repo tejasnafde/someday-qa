@@ -1,0 +1,24 @@
+# iOS only: Safari can open with a first-run tip or sheet over the page. Tap
+# it away so the screenshot shows what opened the link. Each tap runs only
+# when its button is on screen; the app's own screens have none of them.
+# appId is only the flow's default app; the taps go to whatever is in front.
+appId: app.someday.capture
+---
+- runFlow:
+    when:
+      platform: iOS
+      visible: "Not Now"
+    commands:
+      - tapOn: "Not Now"
+- runFlow:
+    when:
+      platform: iOS
+      visible: "Continue"
+    commands:
+      - tapOn: "Continue"
+- runFlow:
+    when:
+      platform: iOS
+      visible: "Close"
+    commands:
+      - tapOn: "Close"

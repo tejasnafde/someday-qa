@@ -1,0 +1,13 @@
+# Signed out, an invite link opens the app (universal links, from 1.23.1).
+appId: app.someday.capture
+# Close Safari afterwards, pass or fail, so the next flow never looks at it.
+onFlowComplete:
+  - runScript:
+      file: ../../flows/helper.js
+      env:
+        CMD: close-safari
+---
+- runFlow:
+    file: ../../flows/invite-signed-out.yaml
+    env:
+      LABEL: "link"

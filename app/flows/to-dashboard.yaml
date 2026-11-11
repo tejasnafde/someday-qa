@@ -1,0 +1,28 @@
+# Back to the dashboard from any page through the in-page Back links. An
+# account with no circle sees "Who do you make plans with?" first; "Skip for
+# now" goes past it to the dashboard. A coachmark card ("Skip tour") is
+# tapped away if one shows (signin.yaml marks the tour seen, so it should not).
+appId: app.someday.capture
+---
+- runFlow: system-dialogs.yaml
+- extendedWaitUntil:
+    visible: ".*(New Circle|Who do you make plans with|Back).*"
+    timeout: 45000
+- runFlow: dismiss-tour.yaml
+- runFlow:
+    when:
+      visible: "Skip for now"
+    commands:
+      - tapOn: "Skip for now"
+- repeat:
+    times: 4
+    while:
+      notVisible: "New Circle"
+    commands:
+      - tapOn: "Back"
+      - waitForAnimationToEnd:
+          timeout: 4000
+- extendedWaitUntil:
+    visible: "New Circle"
+    timeout: 20000
+- runFlow: dismiss-tour.yaml

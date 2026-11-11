@@ -1,0 +1,37 @@
+# Android only. Delete an idea (IDEA, a regex) in a circle (CIRCLE, a regex),
+# then press hardware Back. Back must not reopen the deleted idea.
+appId: app.someday.capture
+---
+- launchApp:
+    stopApp: true
+- runFlow: to-dashboard.yaml
+- tapOn: ${CIRCLE}
+- extendedWaitUntil:
+    visible: ${IDEA}
+    timeout: 30000
+- runFlow: dismiss-tour.yaml
+- takeScreenshot: 80-circle-with-shared-idea
+- tapOn: ${IDEA}
+- extendedWaitUntil:
+    visible: "Delete"
+    timeout: 30000
+- tapOn: "Delete"
+- extendedWaitUntil:
+    visible: "Delete this from the circle.*"
+    timeout: 15000
+- tapOn:
+    text: "Delete"
+    below: "Delete this from the circle.*"
+- extendedWaitUntil:
+    notVisible: "Delete this from the circle.*"
+    timeout: 20000
+- extendedWaitUntil:
+    notVisible: ${IDEA}
+    timeout: 30000
+- takeScreenshot: 81-idea-deleted
+- pressKey: back
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: 82-back-after-delete
+- assertNotVisible: "This idea was just deleted.*"
+- assertNotVisible: ${IDEA}
